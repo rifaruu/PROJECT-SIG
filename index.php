@@ -1,3 +1,58 @@
+<?php
+// Koneksi ke database
+$koneksi = new mysqli("localhost", "root", "", "project_sig"); // Ganti nama_database sesuai milikmu
+if ($koneksi->connect_error) {
+    die("Koneksi gagal: " . $koneksi->connect_error);
+}
+
+function hitungJarak($lat1, $lon1, $lat2, $lon2) {
+    $radius = 6371;
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat / 2) * sin($dLat / 2) +
+         cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+         sin($dLon / 2) * sin($dLon / 2);
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    return $radius * $c;
+}
+
+// Ambil semua fasilitas dari database
+$fasilitas = [];
+$sql = "SELECT id, name, latitude, longitude FROM health_services";
+$result = $koneksi->query($sql);
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $fasilitas[$row['id']] = [
+            'name' => $row['name'],
+            'lat' => $row['latitude'],
+            'lon' => $row['longitude']
+        ];
+    }
+}
+
+$hasilJarak = '';
+$koordinat1 = $koordinat2 = null;
+$name1 = $name2 = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $f1 = $_POST['faskes1'];
+    $f2 = $_POST['faskes2'];
+    if ($f1 !== $f2 && isset($fasilitas[$f1]) && isset($fasilitas[$f2])) {
+        $lat1 = $fasilitas[$f1]['lat'];
+        $lon1 = $fasilitas[$f1]['lon'];
+        $lat2 = $fasilitas[$f2]['lat'];
+        $lon2 = $fasilitas[$f2]['lon'];
+        $koordinat1 = [$lat1, $lon1];
+        $koordinat2 = [$lat2, $lon2];
+        $jarak = hitungJarak($lat1, $lon1, $lat2, $lon2);
+        $name1 = $fasilitas[$f1]['name'];
+        $name2 = $fasilitas[$f2]['name'];
+        $hasilJarak = "Jarak antara $name1 dan $name2 adalah " . round($jarak, 2) . " km.";
+    } else {
+        $hasilJarak = "Pilih dua fasilitas yang berbeda.";
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
